@@ -213,4 +213,17 @@ func rayIntersectionWithHorizontalPlane(rayOrigin: float3, direction: float3, pl
 	
 	// Return the intersection point.
 	return rayOrigin + (direction * dist)
+
+
 }
+
+class GlobalFunctions {
+  // MARK: File System
+  class func getDocumentsDirectory() -> URL {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    let documentsDirectory = paths[0]
+    return documentsDirectory
+  }
+}
+
+

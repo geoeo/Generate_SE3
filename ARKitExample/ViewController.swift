@@ -15,6 +15,7 @@ class ViewController: UIViewController {
     // MARK: - ARKit Config Properties
     
     var screenCenter: CGPoint?
+    var imageCounter: Int = 0
 
     let session = ARSession()
     let standardConfiguration: ARWorldTrackingSessionConfiguration = {
@@ -26,13 +27,12 @@ class ViewController: UIViewController {
     // MARK: - Virtual Object Manipulation Properties
     
     var dragOnInfinitePlanesEnabled = false
-    var virtualObjectManager: VirtualObjectManager!
-    
+  
     var isLoadingObject: Bool = false {
         didSet {
             DispatchQueue.main.async {
                 self.settingsButton.isEnabled = !self.isLoadingObject
-                self.addObjectButton.isEnabled = !self.isLoadingObject
+                self.captureButton.isEnabled = !self.isLoadingObject
                 self.restartExperienceButton.isEnabled = !self.isLoadingObject
             }
         }
@@ -42,6 +42,7 @@ class ViewController: UIViewController {
     
     var textManager: TextManager!
     var restartExperienceButtonIsEnabled = true
+    var isCapturing = false
     
     // MARK: - UI Elements
     
@@ -53,7 +54,7 @@ class ViewController: UIViewController {
     @IBOutlet weak var messagePanel_SE3: UIView!
     @IBOutlet weak var messageLabel_SE3: UILabel!
     @IBOutlet weak var settingsButton: UIButton!
-    @IBOutlet weak var addObjectButton: UIButton!
+    @IBOutlet weak var captureButton: UIButton!
     @IBOutlet weak var restartExperienceButton: UIButton!
     
     // MARK: - Queues
@@ -102,9 +103,6 @@ class ViewController: UIViewController {
     // MARK: - Setup
     
 	func setupScene() {
-        // Synchronize updates via the `serialQueue`.
-        virtualObjectManager = VirtualObjectManager(updateQueue: serialQueue)
-        virtualObjectManager.delegate = self
 		
 		// set up scene view
 		sceneView.setup()
@@ -137,28 +135,6 @@ class ViewController: UIViewController {
       
     }
 	
-    // MARK: - Gesture Recognizers
-	
-	override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-		virtualObjectManager.reactToTouchesBegan(touches, with: event, in: self.sceneView)
-	}
-	
-	override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-		virtualObjectManager.reactToTouchesMoved(touches, with: event)
-	}
-	
-	override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-		if virtualObjectManager.virtualObjects.isEmpty {
-			chooseObject(addObjectButton)
-			return
-		}
-		virtualObjectManager.reactToTouchesEnded(touches, with: event)
-	}
-	
-	override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-		virtualObjectManager.reactToTouchesCancelled(touches, with: event)
-	}
-	
     // MARK: - Planes
 	
 	var planes = [ARPlaneAnchor: Plane]()
@@ -171,9 +147,6 @@ class ViewController: UIViewController {
 		
 		textManager.cancelScheduledMessage(forType: .planeEstimation)
 		textManager.showMessage("SURFACE DETECTED")
-		if virtualObjectManager.virtualObjects.isEmpty {
-			textManager.scheduleMessage("TAP + TO PLACE AN OBJECT", inSeconds: 7.5, messageType: .contentPlacement)
-		}
 	}
 		
     func updatePlane(anchor: ARPlaneAnchor) {
@@ -202,7 +175,7 @@ class ViewController: UIViewController {
 	
     func setupFocusSquare() {
 		serialQueue.async {
-			self.focusSquare?.isHidden = true
+      self.focusSquare?.isHidden = false   
 			self.focusSquare?.removeFromParentNode()
 			self.focusSquare = FocusSquare()
 			self.sceneView.scene.rootNode.addChildNode(self.focusSquare!)
@@ -214,24 +187,11 @@ class ViewController: UIViewController {
 	func updateFocusSquare() {
 		guard let screenCenter = screenCenter else { return }
 		
-		DispatchQueue.main.async {
-			var objectVisible = false
-			for object in self.virtualObjectManager.virtualObjects {
-				if self.sceneView.isNode(object, insideFrustumOf: self.sceneView.pointOfView!) {
-					objectVisible = true
-					break
-				}
-			}
-			
-			if objectVisible {
-				self.focusSquare?.hide()
-			} else {
-				self.focusSquare?.unhide()
-			}
-			
-            let (worldPos, planeAnchor, _) = self.virtualObjectManager.worldPositionFromScreenPosition(screenCenter,
+    DispatchQueue.main.async {
+
+            let (worldPos, planeAnchor, _) = self.worldPositionFromScreenPosition(screenCenter,
                                                                                                        in: self.sceneView,
-                                                                                                       objectPos: self.focusSquare?.simdPosition)
+                                                                                                       objectPos: self.focusSquare?.simdPosition)   
 			if let worldPos = worldPos {
 				self.serialQueue.async {
 					self.focusSquare?.update(for: worldPos, planeAnchor: planeAnchor, camera: self.session.currentFrame?.camera)
@@ -258,5 +218,81 @@ class ViewController: UIViewController {
 			textManager.showAlert(title: title, message: message, actions: [])
 		}
 	}
+	
+//   // MARK: - Transformation
+
+  func worldPositionFromScreenPosition(_ position: CGPoint,
+                                       in sceneView: ARSCNView,
+                                       objectPos: float3?,
+                                       infinitePlane: Bool = false) -> (position: float3?, planeAnchor: ARPlaneAnchor?, hitAPlane: Bool) {
+
+    let dragOnInfinitePlanesEnabled = UserDefaults.standard.bool(for: .dragOnInfinitePlanes)
+
+    // -------------------------------------------------------------------------------
+    // 1. Always do a hit test against exisiting plane anchors first.
+    //    (If any such anchors exist & only within their extents.)
+
+    let planeHitTestResults = sceneView.hitTest(position, types: .existingPlaneUsingExtent)
+    if let result = planeHitTestResults.first {
+
+      let planeHitTestPosition = result.worldTransform.translation
+      let planeAnchor = result.anchor
+
+      // Return immediately - this is the best possible outcome.
+      return (planeHitTestPosition, planeAnchor as? ARPlaneAnchor, true)
+    }
+
+    // -------------------------------------------------------------------------------
+    // 2. Collect more information about the environment by hit testing against
+    //    the feature point cloud, but do not return the result yet.
+
+    var featureHitTestPosition: float3?
+    var highQualityFeatureHitTestResult = false
+
+    let highQualityfeatureHitTestResults = sceneView.hitTestWithFeatures(position, coneOpeningAngleInDegrees: 18, minDistance: 0.2, maxDistance: 2.0)
+
+    if !highQualityfeatureHitTestResults.isEmpty {
+      let result = highQualityfeatureHitTestResults[0]
+      featureHitTestPosition = result.position
+      highQualityFeatureHitTestResult = true
+    }
+
+    // -------------------------------------------------------------------------------
+    // 3. If desired or necessary (no good feature hit test result): Hit test
+    //    against an infinite, horizontal plane (ignoring the real world).
+
+    if (infinitePlane && dragOnInfinitePlanesEnabled) || !highQualityFeatureHitTestResult {
+
+      if let pointOnPlane = objectPos {
+        let pointOnInfinitePlane = sceneView.hitTestWithInfiniteHorizontalPlane(position, pointOnPlane)
+        if pointOnInfinitePlane != nil {
+          return (pointOnInfinitePlane, nil, true)
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------------
+    // 4. If available, return the result of the hit test against high quality
+    //    features if the hit tests against infinite planes were skipped or no
+    //    infinite plane was hit.
+
+    if highQualityFeatureHitTestResult {
+      return (featureHitTestPosition, nil, false)
+    }
+
+    // -------------------------------------------------------------------------------
+    // 5. As a last resort, perform a second, unfiltered hit test against features.
+    //    If there are no features in the scene, the result returned here will be nil.
+
+    let unfilteredFeatureHitTestResults = sceneView.hitTestWithFeatures(position)
+    if !unfilteredFeatureHitTestResults.isEmpty {
+      let result = unfilteredFeatureHitTestResults[0]
+      return (result.position, nil, false)
+    }
     
+    return (nil, nil, false)
+  }
+
+
 }
+

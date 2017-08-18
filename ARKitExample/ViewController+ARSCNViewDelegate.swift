@@ -10,33 +10,29 @@ import os.log
 
 extension ViewController: ARSCNViewDelegate {
     // MARK: - ARSCNViewDelegate
-    
+  
     func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
-        let camera = self.session.currentFrame?.camera
         var outMessage = String()
       
-        if let logger = self.oslog {
-          os_log("Renderer: %@", log: logger, type: .info, "NEW FRAME - RENDER START")
-          if let translation = camera?.transform.translation.debugDescription{
-            outMessage += "Trans: " + translation + ", "
-            os_log("Translation: %@", log: logger, type: .info, translation)
+        if let camera = session.currentFrame?.camera{
+          let translation = camera.transform.translation.debugDescription
+          outMessage += "Trans: " + translation + ", "
+        
+          let eulerAngles = camera.eulerAngles.debugDescription
+          outMessage += "(R,P,Y): " + eulerAngles
+          
+          // Have to update UI in Main Thread
+          DispatchQueue.main.async {
+          self.messageLabel_SE3.text = outMessage
           }
           
-          if let eulerAngles = camera?.eulerAngles.debugDescription {
-            outMessage += "(R,P,Y): " + eulerAngles
-            os_log("Roll,Pitch,Yaw: %@", log: logger, type: .info, eulerAngles)
-          }
-          
-          os_log("Renderer: %@", log: logger, type: .info, "NEW FRAME - RENDER END")
         }
-      
-      DispatchQueue.main.async {
-        self.messageLabel_SE3.text = outMessage
-      }
+        else {
+          if let logger = self.oslog {
+            os_log("renderer: %@", log: logger, type: .fault, "ARCamera not available")
+          }
+        }
 
-
-
-      
         updateFocusSquare()
         
         // If light estimation is enabled, update the intensity of the model's lights and the environment map
@@ -45,13 +41,52 @@ extension ViewController: ARSCNViewDelegate {
         } else {
             sceneView.scene.enableEnvironmentMapWithIntensity(40, queue: serialQueue)
         }
+      
+        if(self.isCapturing){
+        
+          guard let pixelBufferFrame = session.currentFrame?.capturedImage else {
+          if let logger = self.oslog {
+            os_log("renderer: %@", log: logger, type: .fault, "capturedImage not available")
+          }
+            return
+          }
+        
+          let imageName = "frame_" + String(self.imageCounter)
+          self.imageCounter += 1
+          
+          let ci_image = CIImage(cvPixelBuffer: pixelBufferFrame)
+          let context = CIContext() // Prepare for create CGImage
+          let cgimg = context.createCGImage(ci_image, from: ci_image.extent)
+          let image = UIImage(cgImage: cgimg!)
+          let filename = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(imageName+".png")
+        
+          guard let data = UIImagePNGRepresentation(image) else {
+              if let logger = self.oslog {
+              os_log("Renderer: %@", log: logger, type: .fault, "Unable to generate png")
+              }
+              return
+          }
+
+          guard let _ = try? data.write(to: filename) else {
+              if let logger = self.oslog {
+              os_log("Renderer: %@", log: logger, type: .fault, "Unable to save png")
+              }
+              return
+          }
+          
+         if let logger = self.oslog {
+            os_log("Renderer: %@", log: logger, type: .info, "saved png")
+          }
+        
+//          try? data.write(to: filename)
+         
+       }
     }
     
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         guard let planeAnchor = anchor as? ARPlaneAnchor else { return }
         serialQueue.async {
             self.addPlane(node: node, anchor: planeAnchor)
-            self.virtualObjectManager.checkIfObjectShouldMoveOntoPlane(anchor: planeAnchor, planeAnchorNode: node)
         }
     }
     
@@ -59,7 +94,6 @@ extension ViewController: ARSCNViewDelegate {
         guard let planeAnchor = anchor as? ARPlaneAnchor else { return }
         serialQueue.async {
             self.updatePlane(anchor: planeAnchor)
-            self.virtualObjectManager.checkIfObjectShouldMoveOntoPlane(anchor: planeAnchor, planeAnchorNode: node)
         }
     }
     
@@ -69,6 +103,7 @@ extension ViewController: ARSCNViewDelegate {
             self.removePlane(anchor: planeAnchor)
         }
     }
+  
   
     func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
         textManager.showTrackingQualityInfo(for: camera.trackingState, autoHide: true)

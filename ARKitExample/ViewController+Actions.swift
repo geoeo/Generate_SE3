@@ -7,6 +7,7 @@ UI Actions for the main view controller.
 
 import UIKit
 import SceneKit
+import os.log
 
 extension ViewController: UIPopoverPresentationControllerDelegate {
     
@@ -16,13 +17,17 @@ extension ViewController: UIPopoverPresentationControllerDelegate {
     }
     
     // MARK: - Interface Actions
-    
-    @IBAction func chooseObject(_ button: UIButton) {
-        // Abort if we are about to load another object to avoid concurrent modifications of the scene.
-        if isLoadingObject { return }
+  
+    @IBAction func startCapture(_ button: UIButton) {
+    // Set global property for capturing SE3 properties of the scene
+
+      self.isCapturing = !self.isCapturing
+     
+      if let logger = self.oslog {
+        os_log("startCapture: %@, %@", log: logger, type: .info, "Button Pressed", String(self.isCapturing))
+      }
         
-        textManager.cancelScheduledMessage(forType: .contentPlacement)
-        performSegue(withIdentifier: SegueIdentifier.showObjects.rawValue, sender: button)
+        
     }
     
     /// - Tag: restartExperience
@@ -36,9 +41,6 @@ extension ViewController: UIPopoverPresentationControllerDelegate {
             self.textManager.dismissPresentedAlert()
             self.textManager.showMessage("STARTING A NEW SESSION")
             
-            self.virtualObjectManager.removeAllVirtualObjects()
-            self.addObjectButton.setImage(#imageLiteral(resourceName: "add"), for: [])
-            self.addObjectButton.setImage(#imageLiteral(resourceName: "addPressed"), for: [.highlighted])
             self.focusSquare?.isHidden = true
             
             self.resetTracking()
@@ -62,19 +64,4 @@ extension ViewController: UIPopoverPresentationControllerDelegate {
     func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle {
         return .none
     }
-    
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
-        // All popover segues should be popovers even on iPhone.
-        if let popoverController = segue.destination.popoverPresentationController, let button = sender as? UIButton {
-            popoverController.delegate = self
-            popoverController.sourceRect = button.bounds
-        }
-        
-        guard let identifier = segue.identifier, let segueIdentifer = SegueIdentifier(rawValue: identifier) else { return }
-        if segueIdentifer == .showObjects, let objectsViewController = segue.destination as? VirtualObjectSelectionViewController {
-            objectsViewController.delegate = self
-        }
-    }
-    
 }

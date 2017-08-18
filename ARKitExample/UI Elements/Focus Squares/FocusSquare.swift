@@ -11,13 +11,13 @@ import ARKit
 /// - Tag: FocusSquare
 class FocusSquare: SCNNode {
     
-    // MARK: - Focus Square Configuration Properties
+  // MARK: - Focus Square Configuration Properties
 	
 	// Original size of the focus square in m.
 	private let focusSquareSize: Float = 0.17
  
-    // Thickness of the focus square lines in m.
-    private let focusSquareThickness: Float = 0.018
+  // Thickness of the focus square lines in m.
+  private let focusSquareThickness: Float = 0.018
        
 	// Scale factor for the focus square when it is closed, w.r.t. the original size.
 	private let scaleForClosedSquare: Float = 0.97
@@ -52,7 +52,7 @@ class FocusSquare: SCNNode {
     
 	override init() {
 		super.init()
-		self.opacity = 0.0
+		self.opacity = 1.0
 		self.addChildNode(focusSquareNode)
 		open()
 	}
