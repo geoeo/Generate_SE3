@@ -61,7 +61,10 @@ extension ViewController: ARSCNViewDelegate {
           
           let ci_image = CIImage(cvPixelBuffer: pixelBufferFrame)
           let context = CIContext() // Prepare for create CGImage
-          guard let cgImg = context.createCGImage(ci_image, from: CGRect(origin: CGPoint.zero, size: CGSize(width: CGFloat(width), height: CGFloat(height)))) else {
+          // TODO: Rescale Image not just Crop
+//          guard let cgImg = context.createCGImage(ci_image, from: CGRect(origin: CGPoint.zero, size:
+//           CGSize(width: CGFloat(width), height: CGFloat(height)))) else {
+          guard let cgImg = context.createCGImage(ci_image, from: ci_image.extent) else {
            if let logger = self.oslog {
                   os_log("Renderer: %@", log: logger, type: .fault, "Could not create cg img")
                 }

@@ -68,14 +68,19 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+      
+        // Setup logging
+        let bundleID:String = Bundle.main.bundleIdentifier ?? "unknown"
+        self.oslog = OSLog(subsystem: bundleID, category: "OSLOG - SE3")
+      
+        GlobalFunctions.clearDocumentsDiretory()
+      
 
         Setting.registerDefaults()
         setupUIControls()
         setupScene()
       
-        // Setup logging
-        let bundleID:String = Bundle.main.bundleIdentifier ?? "unknown"
-        self.oslog = OSLog(subsystem: bundleID, category: "OSLOG - SE3")
+
     }
 
 	override func viewDidAppear(_ animated: Bool) {

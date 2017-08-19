@@ -7,6 +7,7 @@ Utility functions and type extensions used throughout the projects.
 
 import Foundation
 import ARKit
+import os.log
 
 // MARK: - Collection extensions
 extension Array where Iterator.Element == Float {
@@ -224,6 +225,25 @@ class GlobalFunctions {
     let documentsDirectory = paths[0]
     return documentsDirectory
   }
+  
+  class func clearDocumentsDiretory() {
+    let bundleID:String = Bundle.main.bundleIdentifier ?? "unknown"
+    let oslog = OSLog(subsystem: bundleID, category: "GlobalFunc - SE3")
+  
+    let path = GlobalFunctions.getDocumentsDirectory().path
+    guard let directoryContents = try? FileManager.default.contentsOfDirectory(atPath: path) else{
+      return
+    }
+    
+    for item in directoryContents{
+      let fullPath = path.appending("/").appending(item)
+      if let _ = try? FileManager.default.removeItem(atPath: fullPath){
+        os_log("Removed File: %@", log: oslog, type: .info, fullPath)
+      }
+    }
+  }
+    
+    
 }
 
 
