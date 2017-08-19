@@ -7,7 +7,7 @@ ARSCNViewDelegate interactions for `ViewController`.
 
 import ARKit
 import os.log
-import MobileCoreServices
+import CoreGraphics
 
 extension ViewController: ARSCNViewDelegate {
     // MARK: - ARSCNViewDelegate
@@ -29,9 +29,7 @@ extension ViewController: ARSCNViewDelegate {
           
         }
         else {
-          if let logger = self.oslog {
-            os_log("renderer: %@", log: logger, type: .fault, "ARCamera not available")
-          }
+            os_log("renderer: %@", log: self.oslog, type: .fault, "ARCamera not available")
         }
 
         updateFocusSquare()
@@ -46,60 +44,54 @@ extension ViewController: ARSCNViewDelegate {
         if(self.isCapturing){
         
           guard let pixelBufferFrame = session.currentFrame?.capturedImage else {
-          if let logger = self.oslog {
-            os_log("renderer: %@", log: logger, type: .fault, "capturedImage not available")
-          }
+            os_log("renderer: %@", log: self.oslog, type: .fault, "capturedImage not available")
             return
           }
         
-          DispatchQueue.global(qos: .utility).async {
-          
           let imageName = "frame_" + String(self.imageCounter)
           self.imageCounter += 1
+        
+          DispatchQueue.global(qos: .utility).async {
+
           let width = 640
           let height = 480
           
           let ci_image = CIImage(cvPixelBuffer: pixelBufferFrame)
           let context = CIContext() // Prepare for create CGImage
-          // TODO: Rescale Image not just Crop
-//          guard let cgImg = context.createCGImage(ci_image, from: CGRect(origin: CGPoint.zero, size:
-//           CGSize(width: CGFloat(width), height: CGFloat(height)))) else {
+
           guard let cgImg = context.createCGImage(ci_image, from: ci_image.extent) else {
-           if let logger = self.oslog {
-                  os_log("Renderer: %@", log: logger, type: .fault, "Could not create cg img")
-                }
+                os_log("Renderer: %@", log: self.oslog, type: .fault, "Could not create cg img")
                 return
             }
             
+          guard let cgContext = CGContext(data: nil,width: width,height: height,bitsPerComponent: cgImg.bitsPerComponent,bytesPerRow: cgImg.bytesPerRow,space: cgImg.colorSpace!,bitmapInfo: cgImg.bitmapInfo.rawValue) else {
+                  os_log("Renderer: %@", log: self.oslog, type: .fault, "Could not create cgContext")
+              
+                return
+            }
+            
+          cgContext.interpolationQuality = .high
+          cgContext.draw(cgImg, in: CGRect(x: 0, y: 0, width: width, height: height))
+          guard let cgImgResized = cgContext.makeImage() else {
+            os_log("Renderer: %@", log: self.oslog, type: .fault, "Unable to generate resized image")
+            return
+            }
+  
           let filename = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(imageName+".png")
-          let image = UIImage(cgImage: cgImg)
-
-          DispatchQueue.main.async {
+          let image = UIImage(cgImage: cgImgResized)
 
             guard let data = UIImagePNGRepresentation(image) else {
-
-                if let logger = self.oslog {
-                os_log("Renderer: %@", log: logger, type: .fault, "Unable to generate png")
-                }
+                os_log("Renderer: %@", log: self.oslog, type: .fault, "Unable to generate png")
                 return
             }
             
-            DispatchQueue.global(qos: .utility).async{
-              guard let _ = try? data.write(to: filename) else {
-                  if let logger = self.oslog {
-                  os_log("Renderer: %@", log: logger, type: .fault, "Unable to save png")
-                  }
-                  return
-              }
+            guard let _ = try? data.write(to: filename) else {
+                os_log("Renderer: %@", log: self.oslog, type: .fault, "Unable to save png")
+                return
+            }
 
-              if let logger = self.oslog {
-                os_log("Renderer: %@", log: logger, type: .info, "saved png")
-              }
-
-           }
-
+            os_log("Renderer: %@", log: self.oslog, type: .info, "saved png")
           
-          } // END MAIN.ASYNC
           
          } // END ASYNC #1
           

@@ -62,16 +62,14 @@ class ViewController: UIViewController {
 	let serialQueue = DispatchQueue(label: "com.apple.arkitexample.serialSceneKitQueue")
 	
     // Setup logging
-  var oslog:OSLog?
+        // Setup logging
+//    let bundleID:String =
+    let oslog : OSLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "unknown", category: "OSLOG - SE3")
 	
     // MARK: - View Controller Life Cycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
-      
-        // Setup logging
-        let bundleID:String = Bundle.main.bundleIdentifier ?? "unknown"
-        self.oslog = OSLog(subsystem: bundleID, category: "OSLOG - SE3")
       
         GlobalFunctions.clearDocumentsDiretory()
       

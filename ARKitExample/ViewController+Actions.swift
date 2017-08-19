@@ -23,9 +23,8 @@ extension ViewController: UIPopoverPresentationControllerDelegate {
 
       self.isCapturing = !self.isCapturing
      
-      if let logger = self.oslog {
-        os_log("startCapture: %@, %@", log: logger, type: .info, "Button Pressed", String(self.isCapturing))
-      }
+      os_log("startCapture: %@, %@", log: self.oslog, type: .info, "Button Pressed", String(self.isCapturing))
+      
         
         
     }
