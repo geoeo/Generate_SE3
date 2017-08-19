@@ -7,6 +7,7 @@ ARSCNViewDelegate interactions for `ViewController`.
 
 import ARKit
 import os.log
+import MobileCoreServices
 
 extension ViewController: ARSCNViewDelegate {
     // MARK: - ARSCNViewDelegate
@@ -51,38 +52,59 @@ extension ViewController: ARSCNViewDelegate {
             return
           }
         
+          DispatchQueue.global(qos: .utility).async {
+          
           let imageName = "frame_" + String(self.imageCounter)
           self.imageCounter += 1
+          let width = 640
+          let height = 480
           
           let ci_image = CIImage(cvPixelBuffer: pixelBufferFrame)
           let context = CIContext() // Prepare for create CGImage
-          let cgimg = context.createCGImage(ci_image, from: ci_image.extent)
-          let image = UIImage(cgImage: cgimg!)
+          guard let cgImg = context.createCGImage(ci_image, from: CGRect(origin: CGPoint.zero, size: CGSize(width: CGFloat(width), height: CGFloat(height)))) else {
+           if let logger = self.oslog {
+                  os_log("Renderer: %@", log: logger, type: .fault, "Could not create cg img")
+                }
+                return
+            }
+            
           let filename = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(imageName+".png")
-        
-          guard let data = UIImagePNGRepresentation(image) else {
-              if let logger = self.oslog {
-              os_log("Renderer: %@", log: logger, type: .fault, "Unable to generate png")
-              }
-              return
-          }
+          let image = UIImage(cgImage: cgImg)
 
-          guard let _ = try? data.write(to: filename) else {
-              if let logger = self.oslog {
-              os_log("Renderer: %@", log: logger, type: .fault, "Unable to save png")
+          DispatchQueue.main.async {
+
+            guard let data = UIImagePNGRepresentation(image) else {
+
+                if let logger = self.oslog {
+                os_log("Renderer: %@", log: logger, type: .fault, "Unable to generate png")
+                }
+                return
+            }
+            
+            DispatchQueue.global(qos: .utility).async{
+              guard let _ = try? data.write(to: filename) else {
+                  if let logger = self.oslog {
+                  os_log("Renderer: %@", log: logger, type: .fault, "Unable to save png")
+                  }
+                  return
               }
-              return
-          }
+
+              if let logger = self.oslog {
+                os_log("Renderer: %@", log: logger, type: .info, "saved png")
+              }
+
+           }
+
           
-         if let logger = self.oslog {
-            os_log("Renderer: %@", log: logger, type: .info, "saved png")
-          }
+          } // END MAIN.ASYNC
+          
+         } // END ASYNC #1
+          
+    } // END IF IS CAPTURING
+  } // END RENDER UPDATE
         
-//          try? data.write(to: filename)
-         
-       }
-    }
-    
+          
+//
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         guard let planeAnchor = anchor as? ARPlaneAnchor else { return }
         serialQueue.async {
