@@ -43,63 +43,18 @@ extension ViewController: ARSCNViewDelegate {
       
         if(self.isCapturing){
         
-          guard let pixelBufferFrame = session.currentFrame?.capturedImage else {
-            os_log("renderer: %@", log: self.oslog, type: .fault, "capturedImage not available")
-            return
+          if let currentFrame = session.currentFrame{
+            self.visionManager.writeARFrameToDisk(frame: currentFrame, id: self.frameCounter)
+            self.frameCounter += 1
           }
-        
-          let imageName = "frame_" + String(self.imageCounter)
-          self.imageCounter += 1
-        
-          DispatchQueue.global(qos: .utility).async {
-
-          let width = 640
-          let height = 480
-          
-          let ci_image = CIImage(cvPixelBuffer: pixelBufferFrame)
-          let context = CIContext() // Prepare for create CGImage
-
-          guard let cgImg = context.createCGImage(ci_image, from: ci_image.extent) else {
-                os_log("Renderer: %@", log: self.oslog, type: .fault, "Could not create cg img")
-                return
-            }
-            
-          guard let cgContext = CGContext(data: nil,width: width,height: height,bitsPerComponent: cgImg.bitsPerComponent,bytesPerRow: cgImg.bytesPerRow,space: cgImg.colorSpace!,bitmapInfo: cgImg.bitmapInfo.rawValue) else {
-                  os_log("Renderer: %@", log: self.oslog, type: .fault, "Could not create cgContext")
-              
-                return
-            }
-            
-          cgContext.interpolationQuality = .high
-          cgContext.draw(cgImg, in: CGRect(x: 0, y: 0, width: width, height: height))
-          guard let cgImgResized = cgContext.makeImage() else {
-            os_log("Renderer: %@", log: self.oslog, type: .fault, "Unable to generate resized image")
-            return
-            }
-  
-          let filename = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(imageName+".png")
-          let image = UIImage(cgImage: cgImgResized)
-
-            guard let data = UIImagePNGRepresentation(image) else {
-                os_log("Renderer: %@", log: self.oslog, type: .fault, "Unable to generate png")
-                return
-            }
-            
-            guard let _ = try? data.write(to: filename) else {
-                os_log("Renderer: %@", log: self.oslog, type: .fault, "Unable to save png")
-                return
-            }
-
-            os_log("Renderer: %@", log: self.oslog, type: .info, "saved png")
-          
-          
-         } // END ASYNC #1
+          else {
+            os_log("Renderer: %@", log: self.oslog, type: .fault, "Unable to extract ARFrame from Session")
+          }
+      
           
     } // END IF IS CAPTURING
   } // END RENDER UPDATE
-        
-          
-//
+  
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         guard let planeAnchor = anchor as? ARPlaneAnchor else { return }
         serialQueue.async {

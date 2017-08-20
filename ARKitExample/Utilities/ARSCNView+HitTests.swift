@@ -58,7 +58,7 @@ extension ARSCNView {
         
         // Return the intersection of a ray from the camera through the screen position with a horizontal plane
         // at height (Y axis).
-        return rayIntersectionWithHorizontalPlane(rayOrigin: ray.origin, direction: ray.direction, planeY: pointOnPlane.y)
+        return GlobalFunctions.rayIntersectionWithHorizontalPlane(rayOrigin: ray.origin, direction: ray.direction, planeY: pointOnPlane.y)
     }
     
     func hitTestWithFeatures(_ point: CGPoint, coneOpeningAngleInDegrees: Float,
