@@ -44,6 +44,8 @@ extension ViewController: ARSCNViewDelegate {
         if(self.isCapturing){
         
           if let currentFrame = session.currentFrame{
+          
+            // Will be executed aynchronously inside of visionManager
             self.visionManager.writeARFrameToDisk(frame: currentFrame, id: self.frameCounter)
             self.frameCounter += 1
           }
