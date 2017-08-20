@@ -16,6 +16,7 @@ class VisionManager{
   let imageFolder = "Images"
   let poseFolder  = "Poses"
   let intrinsicsFolder = "Intrinsics"
+  var sessionId = 0
   
   init() {
     
@@ -30,8 +31,8 @@ class VisionManager{
   func writeARFrameToDisk(frame: ARFrame, id:Int){
   
     writeARImageToDisk(pixelBufferFrame: frame.capturedImage, id: id)
-    writeARPoseToDisk(transform: frame.camera.transform, id: id)
-    writeIntrinsicsToDisk(intrinsics: frame.camera.intrinsics, id: id)
+    writeARPoseToDisk(transform: frame.camera.transform, id: sessionId)
+    writeIntrinsicsToDisk(intrinsics: frame.camera.intrinsics, id: sessionId)
   
   }
   
@@ -92,33 +93,90 @@ class VisionManager{
   
       let fileName = "pose_" + String(id)
       let fileURL = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(self.poseFolder, isDirectory: true).appendingPathComponent(fileName+".txt")
-      let contents = transform.debugDescription
+//      let contents = transform.debugDescription
+      let (c1,c2,c3,c4) = transform.columns
+    
+      let contents = String().appending(vectorToString(vec: c1)).appending(" ").appending(vectorToString(vec: c2)).appending(" ").appending(vectorToString(vec: c3)).appending(" ").appending(vectorToString(vec: c4)).appending("\n")
+    
     
       DispatchQueue.global(qos: .utility).async {
-        guard let _ = try? contents.write(to: fileURL, atomically: false, encoding: String.Encoding.utf8)
-        else
-        {
-          os_log("writeARPoseToDisk: %@", log: self.oslog, type: .fault, "coult not write pose to disk")
-          return
+      
+        let filePath = fileURL.path
+      
+        if(FileManager.default.fileExists(atPath: filePath)){
+          guard let fileHandle = FileHandle(forWritingAtPath: filePath) else {
+            os_log("writeARPoseToDisk: %@", log: self.oslog, type: .fault, "could not create file handle")
+            return
+          }
+          
+          guard let data = contents.data(using: String.Encoding.utf8, allowLossyConversion: false) else {
+            os_log("writeARPoseToDisk: %@", log: self.oslog, type: .fault, "could not convert String to Data")
+            return
+          }
+          
+          fileHandle.seekToEndOfFile()
+          fileHandle.write(data)
+          fileHandle.closeFile()
+          
+        }
+        else{
+          guard let _ = try? contents.write(to: fileURL, atomically: false, encoding: String.Encoding.utf8)
+          else
+          {
+            os_log("writeARPoseToDisk: %@", log: self.oslog, type: .fault, "could not write pose to disk")
+            return
+          }
         }
       }
   }
   
   func writeIntrinsicsToDisk(intrinsics: matrix_float3x3, id:Int){
   
-  let fileName = "intrinsics_" + String(id)
+      let fileName = "intrinsics_" + String(id)
       let fileURL = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(self.intrinsicsFolder, isDirectory: true).appendingPathComponent(fileName+".txt")
-      let contents = intrinsics.debugDescription
+      let (c1,c2,c3) = intrinsics.columns
+    
+      let contents = String().appending(vectorToString(vec: c1)).appending(" ").appending(vectorToString(vec: c2)).appending(" ").appending(vectorToString(vec: c3)).appending("\n")
     
       DispatchQueue.global(qos: .utility).async {
-        guard let _ = try? contents.write(to: fileURL, atomically: false, encoding: String.Encoding.utf8)
-        else
-        {
-          os_log("writeARIntrinsicsToDisk: %@", log: self.oslog, type: .fault, "coult not write intrinsics to disk")
-          return
+      
+        let filePath = fileURL.path
+      
+        if(FileManager.default.fileExists(atPath: filePath)){
+         guard let fileHandle = FileHandle(forWritingAtPath: filePath) else {
+            os_log("writeARIntrinsicsToDisk: %@", log: self.oslog, type: .fault, "could not create file handle")
+            return
+          }
+          
+          guard let data = contents.data(using: String.Encoding.utf8, allowLossyConversion: false) else {
+            os_log("writeARIntrinsicsToDisk: %@", log: self.oslog, type: .fault, "could not convert String to Data")
+            return
+          }
+          
+          fileHandle.seekToEndOfFile()
+          fileHandle.write(data)
+          fileHandle.closeFile()
+        }
+        else{
+          guard let _ = try? contents.write(to: fileURL, atomically: false, encoding: String.Encoding.utf8)
+          else
+          {
+            os_log("writeARIntrinsicsToDisk: %@", log: self.oslog, type: .fault, "coult not write intrinsics to disk")
+            return
+          }
         }
       }
+  }
   
+  func vectorToString(vec: float4) -> String {
+  
+    return String().appending(String(vec.x)).appending(" ").appending(String(vec.y)).appending(" ").appending(String(vec.z)).appending(" ").appending(String(vec.w))
+  }
+  
+    func vectorToString(vec: float3) -> String {
+  
+    return String().appending(String(vec.x)).appending(" ").appending(String(vec.y)).appending(" ").appending(String(vec.z))
+    
   }
   
 }
