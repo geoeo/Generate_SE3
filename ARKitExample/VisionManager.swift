@@ -16,15 +16,31 @@ class VisionManager{
   let imageFolder = "Images"
   let poseFolder  = "Poses"
   let intrinsicsFolder = "Intrinsics"
-  var sessionId = 0
+  var sessionId = -1
+  var frameCounter = 0
+  
+  fileprivate func createDirectoryStructure() {
+    let sessionDir = String(self.sessionId)
+    GlobalFunctions.createDirectory(withName: String() , withSession: sessionDir)
+    GlobalFunctions.createDirectory(withName: self.imageFolder, withSession:sessionDir)
+    GlobalFunctions.createDirectory(withName: self.poseFolder,withSession:sessionDir)
+    GlobalFunctions.createDirectory(withName: self.intrinsicsFolder,withSession:sessionDir)
+  }
+  
+  fileprivate func buildFilePath(sessionId: Int,folderName:String, fileName:String) -> URL {
+    return GlobalFunctions.getDocumentsDirectory().appendingPathComponent(String(self.sessionId), isDirectory: true).appendingPathComponent(folderName, isDirectory: true).appendingPathComponent(fileName)
+  }
+  
+ func createNewCaptureSession(){
+    self.sessionId += 1
+    self.frameCounter = 0
+    createDirectoryStructure()
+  }
   
   init() {
     
     // Init Frame Queue Here
     GlobalFunctions.clearDocumentsDiretory()
-    GlobalFunctions.createDirectory(withName: self.imageFolder)
-    GlobalFunctions.createDirectory(withName: self.poseFolder)
-    GlobalFunctions.createDirectory(withName: self.intrinsicsFolder)
     
   }
   
@@ -33,19 +49,25 @@ class VisionManager{
     writeARImageToDisk(pixelBufferFrame: frame.capturedImage, id: id)
     writeARPoseToDisk(transform: frame.camera.transform, id: sessionId)
     writeIntrinsicsToDisk(intrinsics: frame.camera.intrinsics, id: sessionId)
+    self.frameCounter += 1
   
   }
   
   
-  func writeARImageToDisk(pixelBufferFrame: CVPixelBuffer, id:Int){
+  fileprivate func writeARImageToDisk(pixelBufferFrame: CVPixelBuffer, id:Int){
     
-    let imageName = "frame_" + String(id)
-    let fileURL = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(self.imageFolder, isDirectory: true).appendingPathComponent(imageName+".png")
+    let imageName = "frame_" + String(self.frameCounter)
+    let fileURL = buildFilePath(sessionId: self.sessionId,folderName: self.imageFolder, fileName: imageName.appending(".png"))
     
     DispatchQueue.global(qos: .utility).async {
       
+      // orginal 1280 * 720
+      
       let width = 640
       let height = 480
+      
+//      let width = 640
+//      let height = 360
       
       // Hierarchy: CVPixelBuffer -> CoreImage -> CoreGraphics -> UIImage
       
@@ -89,11 +111,10 @@ class VisionManager{
 
   }
   
-  func writeARPoseToDisk(transform : matrix_float4x4, id:Int){
+  fileprivate func writeARPoseToDisk(transform : matrix_float4x4, id:Int){
   
-      let fileName = "pose_" + String(id)
-      let fileURL = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(self.poseFolder, isDirectory: true).appendingPathComponent(fileName+".txt")
-//      let contents = transform.debugDescription
+      let fileName = "pose_" + String(self.frameCounter)
+      let fileURL = buildFilePath(sessionId: self.sessionId,folderName: self.poseFolder, fileName: fileName.appending(".txt"))
       let (c1,c2,c3,c4) = transform.columns
     
       let contents = String().appending(vectorToString(vec: c1)).appending(" ").appending(vectorToString(vec: c2)).appending(" ").appending(vectorToString(vec: c3)).appending(" ").appending(vectorToString(vec: c4)).appending("\n")
@@ -130,10 +151,10 @@ class VisionManager{
       }
   }
   
-  func writeIntrinsicsToDisk(intrinsics: matrix_float3x3, id:Int){
+  fileprivate func writeIntrinsicsToDisk(intrinsics: matrix_float3x3, id:Int){
   
-      let fileName = "intrinsics_" + String(id)
-      let fileURL = GlobalFunctions.getDocumentsDirectory().appendingPathComponent(self.intrinsicsFolder, isDirectory: true).appendingPathComponent(fileName+".txt")
+      let fileName = "intrinsics_" + String(self.frameCounter)
+      let fileURL = buildFilePath(sessionId: self.sessionId,folderName: self.intrinsicsFolder, fileName: fileName.appending(".txt"))
       let (c1,c2,c3) = intrinsics.columns
     
       let contents = String().appending(vectorToString(vec: c1)).appending(" ").appending(vectorToString(vec: c2)).appending(" ").appending(vectorToString(vec: c3)).appending("\n")
@@ -168,7 +189,7 @@ class VisionManager{
       }
   }
   
-  func vectorToString(vec: float4) -> String {
+  fileprivate func vectorToString(vec: float4) -> String {
   
     return String().appending(String(vec.x)).appending(" ").appending(String(vec.y)).appending(" ").appending(String(vec.z)).appending(" ").appending(String(vec.w))
   }
@@ -178,6 +199,7 @@ class VisionManager{
     return String().appending(String(vec.x)).appending(" ").appending(String(vec.y)).appending(" ").appending(String(vec.z))
     
   }
+  
   
 }
 

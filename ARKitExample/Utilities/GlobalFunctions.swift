@@ -57,10 +57,16 @@ class GlobalFunctions {
     return documentsDirectory
   }
   
-  class func createDirectory(withName: String) {
+  class func createDirectory(withName: String, withSession: String) {
   
-    let documentDirectoryURL = getDocumentsDirectory()
-    let directoryURL = documentDirectoryURL.appendingPathComponent(withName, isDirectory: true)
+    var directoryURL = getDocumentsDirectory()
+    if withName.isEmpty {
+       directoryURL = directoryURL.appendingPathComponent(withSession, isDirectory: true)
+    }
+    else{
+       directoryURL = directoryURL.appendingPathComponent(withSession, isDirectory: true).appendingPathComponent(withName, isDirectory: true)
+    }
+
     guard let _ = try? FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: false, attributes: nil)
     else{
       os_log("Create Directory: %@", log: GlobalFunctions.oslog, type: .fault, "Unable to create directory: " + withName)

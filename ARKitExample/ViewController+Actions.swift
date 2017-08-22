@@ -18,10 +18,14 @@ extension ViewController: UIPopoverPresentationControllerDelegate {
   
   // MARK: - Interface Actions
   
-  @IBAction func startCapture(_ button: UIButton) {
+  @IBAction func toggleCapture(_ button: UIButton) {
     // Set global property for capturing SE3 properties of the scene
     
+    if(!self.isCapturing){
+      self.visionManager.createNewCaptureSession()
+    }
     self.isCapturing = !self.isCapturing
+    
     
     os_log("startCapture: %@, %@", log: self.oslog, type: .info, "Button Pressed", String(self.isCapturing))
     
