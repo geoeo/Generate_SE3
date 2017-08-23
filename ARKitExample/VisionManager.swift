@@ -19,6 +19,13 @@ class VisionManager{
   var sessionId = -1
   var frameCounter = 0
   
+  let original_width : Float = 1280.0
+  let original_height : Float = 720.0
+  var width : Int = 0
+  var height : Int = 0
+  var width_scale : Float = 1.0
+  var height_scale : Float = 1.0
+  
   fileprivate func createDirectoryStructure() {
     let sessionDir = String(self.sessionId)
     GlobalFunctions.createDirectory(withName: String() , withSession: sessionDir)
@@ -41,6 +48,23 @@ class VisionManager{
     
     // Init Frame Queue Here
     GlobalFunctions.clearDocumentsDiretory()
+  
+    width_scale = 0.5
+    height_scale = 2/3
+  
+    if width_scale != 1.0 {
+      self.width = Int(original_width*width_scale)
+    }
+    else {
+      self.width = Int(original_width)
+    }
+    
+    if height_scale != 1.0 {
+      self.height = Int(original_height*height_scale)
+    }
+    else {
+      self.height = Int(original_height)
+    }
     
   }
   
@@ -53,7 +77,6 @@ class VisionManager{
   
   }
   
-  
   fileprivate func writeARImageToDisk(pixelBufferFrame: CVPixelBuffer, id:Int){
     
     let imageName = "frame_" + String(self.frameCounter)
@@ -63,8 +86,7 @@ class VisionManager{
       
       // orginal 1280 * 720
       
-      let width = 640
-      let height = 480
+
       
 //      let width = 640
 //      let height = 360
@@ -79,14 +101,14 @@ class VisionManager{
         return
       }
       
-      guard let cgContext = CGContext(data: nil,width: width,height: height,bitsPerComponent: cgImg.bitsPerComponent,bytesPerRow: cgImg.bytesPerRow,space: cgImg.colorSpace!,bitmapInfo: cgImg.bitmapInfo.rawValue) else {
+      guard let cgContext = CGContext(data: nil,width: self.width,height: self.height,bitsPerComponent: cgImg.bitsPerComponent,bytesPerRow: cgImg.bytesPerRow,space: cgImg.colorSpace!,bitmapInfo: cgImg.bitmapInfo.rawValue) else {
         os_log("writeARFrameToDisk: %@", log: self.oslog, type: .fault, "Could not create cgContext")
         
         return
       }
       
       cgContext.interpolationQuality = .high
-      cgContext.draw(cgImg, in: CGRect(x: 0, y: 0, width: width, height: height))
+      cgContext.draw(cgImg, in: CGRect(x: 0, y: 0, width: self.width, height: self.height))
       guard let cgImgResized = cgContext.makeImage() else {
         os_log("writeARFrameToDisk: %@", log: self.oslog, type: .fault, "Unable to generate resized image")
         return
@@ -155,7 +177,17 @@ class VisionManager{
   
       let fileName = "intrinsics_" + String(self.frameCounter)
       let fileURL = buildFilePath(sessionId: self.sessionId,folderName: self.intrinsicsFolder, fileName: fileName.appending(".txt"))
-      let (c1,c2,c3) = intrinsics.columns
+      var (c1,c2,c3) = intrinsics.columns
+    
+      if(self.width_scale != 1.0) {
+        c1.x *= self.width_scale
+        c3.x *= self.width_scale
+      }
+    
+      if(self.height_scale != 1.0) {
+        c2.y *= self.height_scale
+        c3.y *= self.height_scale
+      }
     
       let contents = String().appending(vectorToString(vec: c1)).appending(" ").appending(vectorToString(vec: c2)).appending(" ").appending(vectorToString(vec: c3)).appending("\n")
     
