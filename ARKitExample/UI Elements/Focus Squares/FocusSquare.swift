@@ -161,8 +161,8 @@ class FocusSquare: SCNNode {
 		pulseOutAction.timingMode = .easeInEaseOut
 		pulseInAction.timingMode = .easeInEaseOut
   
-    guard let sequenceAction = SCNAction.sequence([pulseOutAction, pulseInAction]) else { return SCNAction.init() }
-    guard let repeatAction = SCNAction.repeatForever(sequenceAction) else { return SCNAction.init() }
+    let sequenceAction = SCNAction.sequence([pulseOutAction, pulseInAction])
+    let repeatAction = SCNAction.repeatForever(sequenceAction)
 		
         return repeatAction
 	}
@@ -232,8 +232,8 @@ class FocusSquare: SCNNode {
 			let fadeOutAction = SCNAction.fadeOpacity(to: 0.0, duration: animationDuration * 0.125)
       let flashSquareAction = flashAnimation(duration: animationDuration * 0.25)
       
-      guard let sequenceAction = SCNAction.sequence([waitAction, fadeInAction, fadeOutAction]) else { return }
-      guard let sequenceAction_2 = SCNAction.sequence([waitAction, flashSquareAction]) else { return }
+      let sequenceAction = SCNAction.sequence([waitAction, fadeInAction, fadeOutAction])
+      let sequenceAction_2 = SCNAction.sequence([waitAction, flashSquareAction])
       fillPlane.runAction(sequenceAction)
    
 

@@ -16,8 +16,8 @@ class ViewController: UIViewController {
   var screenCenter: CGPoint?
   
   let session = ARSession()
-  let standardConfiguration: ARWorldTrackingSessionConfiguration = {
-    let configuration = ARWorldTrackingSessionConfiguration()
+  let standardConfiguration: ARWorldTrackingConfiguration = {
+    let configuration = ARWorldTrackingConfiguration()
     configuration.planeDetection = .horizontal
     return configuration
   }()
@@ -81,7 +81,7 @@ class ViewController: UIViewController {
     // Prevent the screen from being dimmed after a while.
     UIApplication.shared.isIdleTimerDisabled = true
     
-    if ARWorldTrackingSessionConfiguration.isSupported {
+    if ARWorldTrackingConfiguration.isSupported {
       // Start the ARSession.
       resetTracking()
     } else {

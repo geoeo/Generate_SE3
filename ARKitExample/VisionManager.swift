@@ -48,6 +48,7 @@ class VisionManager{
     
     // Init Frame Queue Here
     GlobalFunctions.clearDocumentsDiretory()
+    os_log("VisinManager: %@", log: self.oslog, type: .info, "clearedDocumentsDir")
   
     width_scale = 0.5
     height_scale = 2/3
@@ -135,7 +136,7 @@ class VisionManager{
   
   fileprivate func writeARPoseToDisk(transform : matrix_float4x4, id:Int){
   
-      let fileName = "pose_" + String(self.frameCounter)
+      let fileName = "poses"
       let fileURL = buildFilePath(sessionId: self.sessionId,folderName: self.poseFolder, fileName: fileName.appending(".txt"))
       let (c1,c2,c3,c4) = transform.columns
     
@@ -175,7 +176,7 @@ class VisionManager{
   
   fileprivate func writeIntrinsicsToDisk(intrinsics: matrix_float3x3, id:Int){
   
-      let fileName = "intrinsics_" + String(self.frameCounter)
+      let fileName = "intrinsics"
       let fileURL = buildFilePath(sessionId: self.sessionId,folderName: self.intrinsicsFolder, fileName: fileName.appending(".txt"))
       var (c1,c2,c3) = intrinsics.columns
     

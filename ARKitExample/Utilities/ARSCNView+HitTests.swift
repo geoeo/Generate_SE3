@@ -81,12 +81,12 @@ extension ARSCNView {
         
         let points = features.points
         
-        for i in 0...features.count {
+      for feature in points {
             
-            let feature = points.advanced(by: Int(i))
-            let featurePos = feature.pointee
-            
-            let originToFeature = featurePos - ray.origin
+//            let feature = points.advanced(by: Int(i))
+//            let featurePos = feature.pointee
+        
+            let originToFeature = feature - ray.origin
             
             let crossProduct = simd_cross(originToFeature, ray.direction)
             let featureDistanceFromResult = simd_length(crossProduct)
@@ -110,7 +110,7 @@ extension ARSCNView {
             // All tests passed: Add the hit against this feature to the results.
             results.append(FeatureHitTestResult(position: hitTestResult,
                                                 distanceToRayOrigin: hitTestResultDistance,
-                                                featureHit: featurePos,
+                                                featureHit: feature,
                                                 featureDistanceToHitResult: featureDistanceFromResult))
         }
         
@@ -157,16 +157,17 @@ extension ARSCNView {
         var closestFeaturePoint = origin
         var minDistance = Float.greatestFiniteMagnitude
         
-        for i in 0...features.count {
-            let feature = points.advanced(by: Int(i))
-            let featurePos = feature.pointee
-            
-            let originVector = origin - featurePos
+      for feature in points {
+//            let feature = points.advanced(by: Int(i))
+//            let featurePos = feature
+        
+//            let originVector = origin - featurePos
+            let originVector = origin - feature
             let crossProduct = simd_cross(originVector, direction)
             let featureDistanceFromResult = simd_length(crossProduct)
             
             if featureDistanceFromResult < minDistance {
-                closestFeaturePoint = featurePos
+                closestFeaturePoint = feature
                 minDistance = featureDistanceFromResult
             }
         }
